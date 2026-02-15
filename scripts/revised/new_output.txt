@@ -1,0 +1,3 @@
+https://databus.dbpedia.org/dbpedia/generic/categories/2022.12.01/categories_lang=es_tag=skos.ttl.bz2
+https://databus.dbpedia.org/dbpedia/generic/categories/2022.12.01/categories_lang=es_tag=labels.ttl.bz2
+https://databus.dbpedia.org/dbpedia/generic/categories/2022.12.01/categories_lang=es_tag=articles.ttl.bz2

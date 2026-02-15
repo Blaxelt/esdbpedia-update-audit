@@ -1,0 +1,28 @@
+PREFIX rdfs:   <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX dcat:   <http://www.w3.org/ns/dcat#>
+PREFIX dct:    <http://purl.org/dc/terms/>
+PREFIX dcv: <https://dataid.dbpedia.org/databus-cv#>
+PREFIX databus: <https://dataid.dbpedia.org/databus#>
+SELECT ?file WHERE
+{
+	GRAPH ?g
+	{
+		?dataset databus:artifact <https://databus.dbpedia.org/dbpedia/generic/categories> .
+		{
+			?distribution dct:hasVersion ?version {
+				SELECT (?v as ?version) { 
+					GRAPH ?g2 { 
+						?dataset databus:artifact <https://databus.dbpedia.org/dbpedia/generic/categories> . 
+						?dataset dct:hasVersion ?v . 
+					}
+				} ORDER BY DESC (STR(?version)) LIMIT 1 
+			}
+		}
+		{ ?distribution <https://dataid.dbpedia.org/databus-cv#lang> 'es' . }
+		{ ?distribution <https://dataid.dbpedia.org/databus#formatExtension> 'ttl' . }
+		{ ?distribution <https://dataid.dbpedia.org/databus#compression> 'bzip2' . }
+		?dataset dcat:distribution ?distribution .
+		?distribution databus:file ?file .
+	}
+}
