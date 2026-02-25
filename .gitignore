@@ -1,1 +1,4 @@
 /my_virtdb
+.venv
+__pycache__/
+scripts/extractor/eswiki*
