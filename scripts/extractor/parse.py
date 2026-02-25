@@ -25,6 +25,9 @@ def get_plain_text(revision, ns):
     if text_element is None or text_element.text is None:
         return None
     parsed = wtp.parse(text_element.text)
+    references = parsed.get_tags('ref')
+    for ref in references:
+        ref.contents = ''
     return parsed.plain_text().strip()
 
 
