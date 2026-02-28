@@ -1,0 +1,4 @@
+wikitextparser==0.56.4
+psycopg==3.3.3
+fastapi[standard]==0.133.1
+sqlmodel==0.0.37
