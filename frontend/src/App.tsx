@@ -24,7 +24,7 @@ function App() {
 
   const handleSearch = () => {
     if (!inputValue.trim()) {
-      setError('Enter an article ID')
+      setError('Enter a revision ID')
       return
     }
     if (isNaN(Number(inputValue))) {
@@ -49,11 +49,11 @@ function App() {
   return (
     <div>
       <div className="top-bar">
-        <p>Article ID: {articleId}</p>
+        <p>Revision ID: {articleId}</p>
         <div className="input-container">
           <input
             type="text"
-            placeholder='Article ID...'
+            placeholder='Revision ID...'
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
           />
