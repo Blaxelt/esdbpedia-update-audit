@@ -103,7 +103,7 @@ def run(filepath):
         print(f"Error: file not found → {filepath}")
         exit(1)
 
-    DATABASE_URL = "postgresql://tfm:tfm@localhost/articles"
+    DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://tfm:tfm@localhost/articles")
     
     start_time = time.time()
 

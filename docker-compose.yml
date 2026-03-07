@@ -1,0 +1,48 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: tfm
+      POSTGRES_PASSWORD: tfm
+      POSTGRES_DB: articles
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tfm -d articles"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  seed:
+    image: python:3.12-slim
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://tfm:tfm@db/articles
+    volumes:
+      - ./scripts/extractor:/app/scripts/extractor
+    working_dir: /app
+    command: >
+      bash -c "pip install --no-cache-dir psycopg[binary] wikitextparser &&
+               python scripts/extractor/parse.py"
+
+  backend:
+    build: ./backend
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgresql+psycopg://tfm:tfm@db:5432/articles
+    expose:
+      - "8000"
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+
+volumes:
+  pgdata:

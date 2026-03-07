@@ -3,3 +3,4 @@
 __pycache__/
 scripts/extractor/eswiki*
 scripts/extractor/text
+*.env
