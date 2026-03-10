@@ -12,14 +12,12 @@ INDEX_FILES = {
 def load_index(lang: str):
     path = Path(INDEX_FILES[lang])
     print(f"[{lang}] Cargando índice desde {path}...")
-
     titles = set()
     with open(path, "r", encoding="utf-8") as f:
         for line in f:
-            parts = line.strip().split(":", 2)
-            if len(parts) == 3:
-                titles.add(parts[2].replace(" ", "_"))
-
+            if line.count(":") == 2:
+                title = line.strip().split(":")[2].replace(" ", "_")
+                titles.add(title)
     wikipedia_index[lang] = titles
     print(f"[{lang}] {len(titles):,} títulos cargados")
 
