@@ -1,10 +1,15 @@
-from fastapi import APIRouter, Path, HTTPException
+from fastapi import APIRouter, Path, HTTPException, Query
 from sqlmodel import select, cast
 from sqlalchemy import Integer
 from app.api.deps import SessionDep
 from app.models import Page, PageDetail
+from app.process_files.load_bz2 import run as load_dump
 
 router = APIRouter()
+
+@router.post("/articles/load")
+def load_articles(date: str = Query(..., pattern=r"^\d{8}$", description="Dump date in YYYYMMDD format, e.g. 20260301")):
+    return load_dump(date)
 
 @router.get("/articles/{article_id}", response_model=PageDetail)
 def get_article(session: SessionDep, article_id: str = Path(..., title="Article ID")):

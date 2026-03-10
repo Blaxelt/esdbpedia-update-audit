@@ -103,7 +103,7 @@ def run(date: str) -> dict:
 
     start = time.time()
     bz2_path = _download_bz2(date)
-    with bz2.open(bz2_path, "rb") as stream:
+    with bz2.open(bz2_path, "rb") as stream: # stream is now a file-like object of decompressed XML bytes
         total, skipped = _process(stream, output_path)
     elapsed = round(time.time() - start, 2)
 

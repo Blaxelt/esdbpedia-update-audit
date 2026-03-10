@@ -9,7 +9,7 @@ class TitleQuery(BaseModel):
     lang: str = "es"
 
 @router.post("/urls")
-def get_urls(query: TitleQuery):
+def get_urls(query: TitleQuery, description="Get Wikipedia URLs for a list of entities"):
     index = wikipedia_index[query.lang]
     base_url = f"https://{query.lang}.wikipedia.org/wiki/"
 
