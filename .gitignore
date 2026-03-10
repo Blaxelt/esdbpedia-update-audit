@@ -5,3 +5,4 @@ scripts/extractor/eswiki*
 scripts/extractor/text
 *.env
 index
+data

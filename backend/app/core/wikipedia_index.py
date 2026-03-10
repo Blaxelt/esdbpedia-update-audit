@@ -15,11 +15,11 @@ def load_index(lang: str):
     titles = set()
     with open(path, "r", encoding="utf-8") as f:
         for line in f:
-            if line.count(":") == 2:
+            if line.count(":") == 2: # Skip lines that are extra pages.
                 title = line.strip().split(":")[2].replace(" ", "_")
                 titles.add(title)
     wikipedia_index[lang] = titles
-    print(f"[{lang}] {len(titles):,} títulos cargados")
+    print(f"[{lang}] {len(titles):,} titles and redirects loaded")
 
 def load_all():
     for lang in ["es", "en"]:
