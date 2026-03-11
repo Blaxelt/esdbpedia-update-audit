@@ -26,7 +26,13 @@ def _get_plain_text(revision, ns):
         return None
     parsed = wtp.parse(text_el.text)
     for ref in parsed.get_tags("ref"): # Delete references
-        ref.contents = ""
+        try:
+            ref.contents = ""
+        except AttributeError:
+            # Some malformed <ref> tags in the dump cause wikitextparser's
+            # internal regex to return None, making .span() crash.
+            # We skip those refs and continue processing the rest of the page.
+            pass
     return parsed.plain_text().strip()
 
 
