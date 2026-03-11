@@ -1,14 +1,4 @@
-from sqlmodel import SQLModel, Field
+from pydantic import BaseModel
 
-class Page(SQLModel, table=True):
-    """Page model"""
-    __tablename__ = "pages"
-
-    id: str = Field(default=None, primary_key=True)
-    title: str
-    text: str
-    status: str
-
-class PageDetail(SQLModel):
-    """Page detail model"""
+class PageDetail(BaseModel):
     text: str

@@ -50,15 +50,16 @@ def _download_bz2(date: str) -> Path:
     return bz2_path
 
 
-def _process(stream, output_path: Path) -> tuple[int, int]:
+def _process(stream, data_path: Path, index_path: Path) -> tuple[int, int]:
     total, skipped = 0, 0
     context = iter(ET.iterparse(stream, events=("start", "end")))
     _, root = next(context)
     ns = root.tag.split("}")[0] + "}"
 
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write("[\n")
-        first = True
+    ids: list[str] = []
+    offsets: list[int] = []
+
+    with open(data_path, "w", encoding="utf-8") as f:
         for event, elem in context:
             if event == "end" and elem.tag == f"{ns}page":
                 title_el = elem.find(f"{ns}title")
@@ -71,20 +72,27 @@ def _process(stream, output_path: Path) -> tuple[int, int]:
                     if text is None:
                         skipped += 1
                     else:
-                        if not first:
-                            f.write(",\n")
-                        json.dump({
-                            "revision_id": rev_id_el.text if rev_id_el is not None else None,
+                        rev_id = rev_id_el.text if rev_id_el is not None else None
+                        record = json.dumps({
+                            "revision_id": rev_id,
                             "title": title_el.text if title_el is not None else None,
                             "text": text,
-                        }, f, ensure_ascii=False)
-                        first = False
+                        }, ensure_ascii=False)
+                        offset = f.tell()
+                        f.write(record + "\n")
+                        if rev_id is not None:
+                            ids.append(rev_id)
+                            offsets.append(offset)
                         total += 1
                         if total % 500 == 0:
                             logger.info("Written %d pages...", total)
                 elem.clear()
                 root.clear()
-        f.write("\n]\n")
+
+    # Write companion index file
+    with open(index_path, "w", encoding="utf-8") as f:
+        json.dump({"ids": ids, "offsets": offsets}, f)
+    logger.info("Index written: %d entries", len(ids))
 
     return total, skipped
 
@@ -96,7 +104,7 @@ def run(date: str) -> dict:
         date: Dump date in YYYYMMDD format, e.g. '20260301'.
 
     Returns:
-        Dict with keys: output_path, total_pages, skipped, elapsed_seconds.
+        Dict with keys: data_path, index_path, total_pages, skipped, elapsed_seconds.
 
     Raises:
         ValueError: If the date format is invalid.
@@ -105,17 +113,19 @@ def run(date: str) -> dict:
         raise ValueError(f"Invalid date '{date}': must be 8 digits, e.g. 20260301")
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    output_path = DATA_DIR / f"eswiki-{date}-pages-articles.json"
+    data_path  = DATA_DIR / f"eswiki-{date}-pages-articles.json"
+    index_path = DATA_DIR / f"eswiki-{date}-index.json"
 
     start = time.time()
     bz2_path = _download_bz2(date)
     with bz2.open(bz2_path, "rb") as stream: # stream is now a file-like object of decompressed XML bytes
-        total, skipped = _process(stream, output_path)
+        total, skipped = _process(stream, data_path, index_path)
     elapsed = round(time.time() - start, 2)
 
     logger.info("Done. %d pages written, %d skipped in %ss", total, skipped, elapsed)
     return {
-        "output_path": str(output_path),
+        "data_path": str(data_path),
+        "index_path": str(index_path),
         "total_pages": total,
         "skipped": skipped,
         "elapsed_seconds": elapsed,

@@ -6,10 +6,12 @@ from app.api.routes import articles
 from app.api.routes import wikipedia_urls
 from contextlib import asynccontextmanager
 from app.core.wikipedia_index import load_all
+from app.core import article_store
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     load_all()
+    article_store.load_latest()
     yield
 
 app = FastAPI(lifespan=lifespan)
