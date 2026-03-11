@@ -4,7 +4,7 @@ start:
 	make -j2 backend frontend
 
 backend:
-	cd backend && uvicorn app.main:app --reload
+	cd backend && uvicorn app.main:app --reload --log-level info
 
 frontend:
 	cd frontend && npm run dev
