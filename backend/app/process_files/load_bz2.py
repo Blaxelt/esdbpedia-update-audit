@@ -7,6 +7,8 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+from app.process_files.iob_format import extract_entities, bio_from_text
+
 import wikitextparser as wtp
 
 logger = logging.getLogger(__name__)
@@ -25,6 +27,7 @@ def _get_plain_text(revision, ns):
     if text_el is None or text_el.text is None:
         return None
     parsed = wtp.parse(text_el.text)
+    entities = extract_entities(parsed)
     for ref in parsed.get_tags("ref"): # Delete references
         try:
             ref.contents = ""
@@ -33,7 +36,7 @@ def _get_plain_text(revision, ns):
             # internal regex to return None, making .span() crash.
             # We skip those refs and continue processing the rest of the page.
             pass
-    return parsed.plain_text().strip()
+    return parsed.plain_text().strip(), entities
 
 
 def _download_bz2(date: str) -> Path:
@@ -50,17 +53,22 @@ def _download_bz2(date: str) -> Path:
     return bz2_path
 
 
-def _process(stream, data_path: Path, index_path: Path) -> tuple[int, int]:
+def _process(stream, data_path: Path, index_path: Path, annotations_path: Path) -> tuple[int, int]:
     total, skipped = 0, 0
     context = iter(ET.iterparse(stream, events=("start", "end")))
     _, root = next(context)
     ns = root.tag.split("}")[0] + "}"
 
+    LIMIT_DEV = 500
+
     ids: list[str] = []
     offsets: list[int] = []
 
-    with open(data_path, "w", encoding="utf-8") as f:
+    with open(data_path, "w", encoding="utf-8") as f, \
+         open(annotations_path, "w", encoding="utf-8") as iobf:
         for event, elem in context:
+            if total >= LIMIT_DEV:
+                break
             if event == "end" and elem.tag == f"{ns}page":
                 title_el = elem.find(f"{ns}title")
                 revision = elem.find(f"{ns}revision")
@@ -68,7 +76,7 @@ def _process(stream, data_path: Path, index_path: Path) -> tuple[int, int]:
                     skipped += 1
                 else:
                     rev_id_el = revision.find(f"{ns}id")
-                    text = _get_plain_text(revision, ns)
+                    text, entities = _get_plain_text(revision, ns)
                     if text is None:
                         skipped += 1
                     else:
@@ -83,6 +91,17 @@ def _process(stream, data_path: Path, index_path: Path) -> tuple[int, int]:
                         if rev_id is not None:
                             ids.append(rev_id)
                             offsets.append(offset)
+                        
+                        tokens, labels = bio_from_text(text, entities)
+
+                        iob_record = json.dumps({
+                            "revision_id": rev_id,
+                            "tokens": tokens,
+                            "labels": labels
+                        }, ensure_ascii=False)
+
+                        iobf.write(iob_record + "\n")
+                        
                         total += 1
                         if total % 500 == 0:
                             logger.info("Written %d pages...", total)
@@ -115,11 +134,12 @@ def run(date: str) -> dict:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     data_path  = DATA_DIR / f"eswiki-{date}-pages-articles.json"
     index_path = DATA_DIR / f"eswiki-{date}-index.json"
+    annotations_path = DATA_DIR / f"eswiki-{date}-iob-format.json"
 
     start = time.time()
     bz2_path = _download_bz2(date)
     with bz2.open(bz2_path, "rb") as stream: # stream is now a file-like object of decompressed XML bytes
-        total, skipped = _process(stream, data_path, index_path)
+        total, skipped = _process(stream, data_path, index_path, annotations_path)
     elapsed = round(time.time() - start, 2)
 
     logger.info("Done. %d pages written, %d skipped in %ss", total, skipped, elapsed)
