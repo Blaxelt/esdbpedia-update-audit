@@ -11,23 +11,38 @@ def extract_entities(parsed):
         if not surface:
             continue
 
-        entities.append({
-            "surface": str(surface)
-        })
+        entities.append(str(surface))
 
     return entities
 
 def bio_from_text(text, entities):
-    tokens = text.split()
+    doc = nlp(text)
+    tokens = [token.text for token in doc]
     labels = ["O"] * len(tokens)
 
+    matcher = PhraseMatcher(nlp.vocab, attr="ORTH")
+    patterns = []
     for ent in entities:
-        words = ent["surface"].split()
+        pattern = nlp.make_doc(ent)
+        if len(pattern) > 0:
+            patterns.append(pattern)
+    if patterns:
+        matcher.add("ENT", patterns)
 
-        for i in range(len(tokens)):
-            if tokens[i:i+len(words)] == words:
-                labels[i] = "B-ENT"
-                for j in range(1, len(words)):
-                    labels[i+j] = "I-ENT"
+    matches = matcher(doc)
+
+    # Sort by start position and deduplicate overlapping spans
+    # (keep longest match when spans overlap)
+    spans = [(start, end) for _, start, end in matches]
+    spans.sort(key=lambda s: (s[0], -(s[1] - s[0])))
+
+    taken = set()
+    for start, end in spans:
+        if any(i in taken for i in range(start, end)):
+            continue
+        labels[start] = "B-ENT"
+        for j in range(start + 1, end):
+            labels[j] = "I-ENT"
+        taken.update(range(start, end))
 
     return tokens, labels
