@@ -11,11 +11,21 @@ function App() {
   const [date, setDate] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [iframeSrc, setIframeSrc] = useState('')
+
+  const buildIframeSrc = (id: string, fragment?: string) => {
+    const base = `https://es.wikipedia.org/w/index.php?oldid=${id}`
+    if (fragment) {
+      return `${base}#:~:text=${encodeURIComponent(fragment)}`
+    }
+    return base
+  }
 
   const loadArticle = (id: string) => {
     setError('')
     setArticleId(id)
     setInputValue(id)
+    setIframeSrc(buildIframeSrc(id))
     fetch(`${API_URL}/articles/${id}`)
       .then(response => {
         if (!response.ok) throw new Error('Article not found')
@@ -50,23 +60,38 @@ function App() {
   }
 
   const handleSubmit = async () => {
-    if (!date) return;
-
-    setLoading(true);
+    if (!date) return
+    setLoading(true)
     try {
       const response = await fetch(`${API_URL}/articles/load?date=${date.replace(/-/g, '')}`, {
-        method: "POST",
-      });
-
-      const data = await response.json();
-      console.log("Respuesta:", data);
-      setShowPicker(false);
+        method: 'POST',
+      })
+      const data = await response.json()
+      console.log('Respuesta:', data)
+      setShowPicker(false)
     } catch (error) {
-      console.error("Error:", error);
+      console.error('Error:', error)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
+
+  // Capture mouse-up on the clean text panel and scroll the iframe
+  const handleTextSelection = () => {
+    if (!articleId) return
+
+    const selection = window.getSelection()
+    if (!selection || selection.isCollapsed) return
+
+    const selectedText = selection.toString().trim()
+    if (!selectedText || selectedText.length < 3) return
+
+    // Use up to the first 15 words to keep the fragment URL reliable
+    const fragment = selectedText.split(/\s+/).slice(0, 15).join(' ')
+
+    // Changing src forces the iframe to reload and jump to the fragment
+    setIframeSrc(buildIframeSrc(articleId, fragment))
+  }
 
   return (
     <div>
@@ -75,15 +100,20 @@ function App() {
         <div className="input-container">
           <input
             type="text"
-            placeholder='Revision ID...'
+            placeholder="Revision ID..."
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
           />
           <button onClick={handleSearch}>🔎</button>
           <button onClick={() => handleAdjacent('prev')}>⬅️</button>
           <button onClick={() => handleAdjacent('next')}>➡️</button>
           <button onClick={() => setShowPicker(true)}>Load bz2</button>
-          {error && <p style={{ color: 'red', margin: 0, whiteSpace: 'nowrap', alignSelf: 'center' }}>{error}</p>}
+          {error && (
+            <p style={{ color: 'red', margin: 0, whiteSpace: 'nowrap', alignSelf: 'center' }}>
+              {error}
+            </p>
+          )}
         </div>
       </div>
 
@@ -105,13 +135,17 @@ function App() {
           </div>
         </div>
       )}
+
       <div className="panels">
-        <div className="clean-panel">
+        <div
+          className="clean-panel"
+          onMouseUp={handleTextSelection}>
           <p style={{ whiteSpace: 'pre-wrap' }}>{articleText}</p>
         </div>
+
         <div className="original-panel">
           <iframe
-            src={`https://es.wikipedia.org/w/index.php?oldid=${articleId}`}
+            src={iframeSrc}
             className="original-iframe"
             title="Wikipedia Article"
           />
