@@ -11,6 +11,7 @@ function App() {
   const [date, setDate] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [modalError, setModalError] = useState('')
   const [iframeSrc, setIframeSrc] = useState('')
 
   const buildIframeSrc = (id: string, fragment?: string) => {
@@ -62,15 +63,22 @@ function App() {
   const handleSubmit = async () => {
     if (!date) return
     setLoading(true)
+    setModalError('')
     try {
       const response = await fetch(`${API_URL}/articles/load?date=${date.replace(/-/g, '')}`, {
         method: 'POST',
       })
+      if (!response.ok) {
+        const data = await response.json()
+        setModalError(data.detail || 'Unknown error')
+        return
+      }
       const data = await response.json()
       console.log('Respuesta:', data)
       setShowPicker(false)
-    } catch (error) {
-      console.error('Error:', error)
+    } catch (err) {
+      setModalError('Could not reach the server.')
+      console.error('Error:', err)
     } finally {
       setLoading(false)
     }
@@ -132,6 +140,11 @@ function App() {
               </button>
               <button onClick={() => setShowPicker(false)}>Cancel</button>
             </div>
+            {modalError && (
+              <p style={{ color: 'red', marginTop: '0.5rem', fontSize: '0.9rem' }}>
+                ⚠️ {modalError}
+              </p>
+            )}
           </div>
         </div>
       )}

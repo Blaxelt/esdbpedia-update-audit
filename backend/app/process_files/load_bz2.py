@@ -3,6 +3,7 @@ import json
 import logging
 import re
 import time
+import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -48,7 +49,12 @@ def _download_bz2(date: str) -> Path:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     url = DUMP_URL_TEMPLATE.format(date=date)
     logger.info("Downloading %s", url)
-    urllib.request.urlretrieve(url, bz2_path)
+    try:
+        urllib.request.urlretrieve(url, bz2_path)
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            raise ValueError(f"No dump found for date '{date}'. Check https://dumps.wikimedia.org/eswiki/ for available dates.") from exc
+        raise
     logger.info("Download complete: %s", bz2_path)
     return bz2_path
 

@@ -7,7 +7,10 @@ router = APIRouter()
 
 @router.post("/articles/load")
 def load_articles(date: str = Query(..., pattern=r"^\d{8}$", description="Dump date in YYYYMMDD format, e.g. 20260301")):
-    result = load_dump(date)
+    try:
+        result = load_dump(date)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
     article_store.load(date)  # Reload index into memory after new dump
     return result
 
