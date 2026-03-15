@@ -28,7 +28,7 @@ def _get_plain_text(revision, ns):
     if text_el is None or text_el.text is None:
         return None
     parsed = wtp.parse(text_el.text)
-    entities = extract_entities(parsed)
+
     for ref in parsed.get_tags("ref"): # Delete references
         try:
             ref.contents = ""
@@ -37,6 +37,17 @@ def _get_plain_text(revision, ns):
             # internal regex to return None, making .span() crash.
             # We skip those refs and continue processing the rest of the page.
             pass
+
+    # Delete templates (e.g., infoboxes) so their wikilinks are ignored.
+    # wikitextparser's plain_text() drops templates anyway, so we
+    # remove them explicitly from the AST to also drop their wikilinks.
+    for tpl in parsed.templates:
+        try:
+            tpl.string = ""
+        except Exception:
+            pass
+            
+    entities = extract_entities(parsed)
     return parsed.plain_text().strip(), entities
 
 
