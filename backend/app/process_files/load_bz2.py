@@ -70,22 +70,17 @@ def _download_bz2(date: str) -> Path:
     return bz2_path
 
 
-def _process(stream, data_path: Path, index_path: Path, annotations_path: Path) -> tuple[int, int]:
+def _process(stream, data_path: Path, index_path: Path) -> tuple[int, int]:
     total, skipped = 0, 0
     context = iter(ET.iterparse(stream, events=("start", "end")))
     _, root = next(context)
     ns = root.tag.split("}")[0] + "}"
 
-    LIMIT_DEV = 500
-
     ids: list[str] = []
     offsets: list[int] = []
 
-    with open(data_path, "w", encoding="utf-8") as f, \
-         open(annotations_path, "w", encoding="utf-8") as iobf:
+    with open(data_path, "w", encoding="utf-8") as f:
         for event, elem in context:
-            if total >= LIMIT_DEV:
-                break
             if event == "end" and elem.tag == f"{ns}page":
                 title_el = elem.find(f"{ns}title")
                 revision = elem.find(f"{ns}revision")
@@ -93,10 +88,11 @@ def _process(stream, data_path: Path, index_path: Path, annotations_path: Path) 
                     skipped += 1
                 else:
                     rev_id_el = revision.find(f"{ns}id")
-                    text, entities = _get_plain_text(revision, ns)
-                    if text is None:
+                    result = _get_plain_text(revision, ns)
+                    if result is None:
                         skipped += 1
                     else:
+                        text, entities = result
                         rev_id = rev_id_el.text if rev_id_el is not None else None
                         record = json.dumps({
                             "revision_id": rev_id,
@@ -108,16 +104,6 @@ def _process(stream, data_path: Path, index_path: Path, annotations_path: Path) 
                         if rev_id is not None:
                             ids.append(rev_id)
                             offsets.append(offset)
-                        
-                        tokens, labels = bio_from_text(text, entities)
-
-                        iob_record = json.dumps({
-                            "revision_id": rev_id,
-                            "tokens": tokens,
-                            "labels": labels
-                        }, ensure_ascii=False)
-
-                        iobf.write(iob_record + "\n")
                         
                         total += 1
                         if total % 500 == 0:
@@ -151,12 +137,11 @@ def run(date: str) -> dict:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     data_path  = DATA_DIR / f"eswiki-{date}-pages-articles.json"
     index_path = DATA_DIR / f"eswiki-{date}-index.json"
-    annotations_path = DATA_DIR / f"eswiki-{date}-iob-format.json"
-
+ 
     start = time.time()
     bz2_path = _download_bz2(date)
     with bz2.open(bz2_path, "rb") as stream: # stream is now a file-like object of decompressed XML bytes
-        total, skipped = _process(stream, data_path, index_path, annotations_path)
+        total, skipped = _process(stream, data_path, index_path)
     elapsed = round(time.time() - start, 2)
 
     logger.info("Done. %d pages written, %d skipped in %ss", total, skipped, elapsed)
