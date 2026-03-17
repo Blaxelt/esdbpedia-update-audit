@@ -8,8 +8,6 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-from app.process_files.iob_format import extract_entities, bio_from_text
-
 import wikitextparser as wtp
 
 logger = logging.getLogger(__name__)
@@ -47,8 +45,7 @@ def _get_plain_text(revision, ns):
         except Exception:
             pass
             
-    entities = extract_entities(parsed)
-    return parsed.plain_text().strip(), entities
+    return parsed.plain_text().strip()
 
 
 def _download_bz2(date: str) -> Path:
@@ -88,11 +85,10 @@ def _process(stream, data_path: Path, index_path: Path) -> tuple[int, int]:
                     skipped += 1
                 else:
                     rev_id_el = revision.find(f"{ns}id")
-                    result = _get_plain_text(revision, ns)
-                    if result is None:
+                    text = _get_plain_text(revision, ns)
+                    if text is None:
                         skipped += 1
                     else:
-                        text, entities = result
                         rev_id = rev_id_el.text if rev_id_el is not None else None
                         record = json.dumps({
                             "revision_id": rev_id,
