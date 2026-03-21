@@ -13,6 +13,8 @@ function App() {
   const [error, setError] = useState('')
   const [modalError, setModalError] = useState('')
   const [iframeSrc, setIframeSrc] = useState('')
+  const [extracting, setExtracting] = useState(false)
+  const [extractMsg, setExtractMsg] = useState('')
 
   const buildIframeSrc = (id: string, fragment?: string) => {
     const base = `https://es.wikipedia.org/w/index.php?oldid=${id}`
@@ -101,6 +103,29 @@ function App() {
     setIframeSrc(buildIframeSrc(articleId, fragment))
   }
 
+  const handleExtractEntities = async () => {
+    if (!articleId || extracting) return
+    setExtracting(true)
+    setExtractMsg('')
+    try {
+      const response = await fetch(`${API_URL}/articles/${articleId}/extract-entities`, {
+        method: 'POST',
+      })
+      if (!response.ok) {
+        const data = await response.json()
+        setExtractMsg(`❌ ${data.detail || 'Error'}`)
+        return
+      }
+      const data = await response.json()
+      setExtractMsg(`✅ ${data.count} entities saved`)
+    } catch {
+      setExtractMsg('❌ Could not reach server')
+    } finally {
+      setExtracting(false)
+      setTimeout(() => setExtractMsg(''), 4000)
+    }
+  }
+
   return (
     <div>
       <div className="top-bar">
@@ -117,6 +142,21 @@ function App() {
           <button onClick={() => handleAdjacent('prev')}>⬅️</button>
           <button onClick={() => handleAdjacent('next')}>➡️</button>
           <button onClick={() => setShowPicker(true)}>Load bz2</button>
+          <button
+            onClick={handleExtractEntities}
+            disabled={!articleId || extracting}
+            title="Extract wikilink entities and save to JSON"
+          >
+            {extracting ? '⏳' : '🔗 Extract'}
+          </button>
+          {extractMsg && (
+            <p style={{
+              margin: 0, whiteSpace: 'nowrap', alignSelf: 'center',
+              color: extractMsg.startsWith('✅') ? 'green' : 'red'
+            }}>
+              {extractMsg}
+            </p>
+          )}
           {error && (
             <p style={{ color: 'red', margin: 0, whiteSpace: 'nowrap', alignSelf: 'center' }}>
               {error}
